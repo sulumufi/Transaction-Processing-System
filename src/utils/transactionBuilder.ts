@@ -7,7 +7,7 @@ import {
 
 const buildTransaction = (request: ClientTransactionRequest): Transaction => {
   const transaction: Transaction = {
-    id: uuidv4(),
+    id: request.transactionId,
     amount: request.amount,
     currency: request.currency,
     description: request.description,

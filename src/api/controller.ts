@@ -13,6 +13,7 @@ import {
   ClientTransactionResponse,
   TransactionState,
 } from '../models/transactions';
+import { checkTransactionExists } from '../services/posting';
 
 const createTransaction = async (req: Request, res: Response) => {
   try {
@@ -21,6 +22,23 @@ const createTransaction = async (req: Request, res: Response) => {
     const { isValid, description } = validateTransactionRequest(body);
     if (!isValid) {
       return res.status(400).json({ error: description });
+    }
+
+    const existingTransactionState = await getTransactionState(
+      body.transactionId
+    );
+    if (existingTransactionState) {
+      const response: ClientTransactionResponse = {
+        transactionId: existingTransactionState.id,
+        status: existingTransactionState.status,
+        submittedAt: existingTransactionState.createdAt,
+        completedAt:
+          existingTransactionState.status == 'completed'
+            ? existingTransactionState.updatedAt
+            : undefined,
+        error: existingTransactionState.error,
+      };
+      return res.status(200).json(response);
     }
 
     const transaction = buildTransaction(body);

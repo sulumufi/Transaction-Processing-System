@@ -5,6 +5,7 @@ import {
 } from '../services/stateStore';
 import { checkTransactionExists, postTransaction } from '../services/posting';
 import { enqueueRetry } from '../services/queue';
+import { acquireLock, releaseLock } from '../services/lock';
 
 const MAX_RETRY = 5;
 
@@ -21,31 +22,43 @@ const processTransaction = async (id: string): Promise<void> => {
     return;
   }
 
-  await updateStatus(id, 'processing');
-
-  const isTransactionExists = await checkTransactionExists(id);
-
-  if (isTransactionExists) {
+  const tryAcquireLock = await acquireLock(id);
+  if (!tryAcquireLock) {
     console.log(
-      'Transaction already processed and is processed in posting service'
+      `Transaction ${id}, is locked by anoterh worker process, skipping execution`
     );
-    await updateStatus(id, 'completed');
     return;
   }
 
-  const isTransactionSuccessful = await postTransaction(state.transaction);
+  try {
+    await updateStatus(id, 'processing');
 
-  if (isTransactionSuccessful) {
-    await updateStatus(id, 'completed');
-    console.log(`Transaction Successfull`);
-  } else {
-    const isTransactionExistsNow = await checkTransactionExists(id);
-    if (isTransactionExistsNow) {
-      console.log('Transaction Exists, post update failure');
+    const isTransactionExists = await checkTransactionExists(id);
+
+    if (isTransactionExists) {
+      console.log(
+        'Transaction already processed and is processed in posting service'
+      );
       await updateStatus(id, 'completed');
-    } else {
-      await handleFailure(id, state.retryCount);
+      return;
     }
+
+    const isTransactionSuccessful = await postTransaction(state.transaction);
+
+    if (isTransactionSuccessful) {
+      await updateStatus(id, 'completed');
+      console.log(`Transaction Successfull`);
+    } else {
+      const isTransactionExistsNow = await checkTransactionExists(id);
+      if (isTransactionExistsNow) {
+        console.log('Transaction Exists, post update failure');
+        await updateStatus(id, 'completed');
+      } else {
+        await handleFailure(id, state.retryCount);
+      }
+    }
+  } finally {
+    await releaseLock(id);
   }
 };
 

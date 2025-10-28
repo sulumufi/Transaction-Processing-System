@@ -3,6 +3,7 @@ type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'INR';
 type TransactionStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 interface ClientTransactionRequest {
+  transactionId: string;
   amount: number;
   currency: Currency;
   description: string;
@@ -43,4 +44,4 @@ export {
   ClientTransactionResponse,
   Transaction,
   TransactionState,
-}
+};

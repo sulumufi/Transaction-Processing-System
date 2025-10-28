@@ -1,4 +1,12 @@
 const validateTransactionRequest = (body: any): Record<string, any> => {
+  // Validate transaction ID (UUID format)
+  if (!body.transactionId || typeof body.transactionId !== 'string') {
+    return {
+      isValid: false,
+      description: 'Invalid or missing transaction ID',
+    };
+  }
+
   if (!body.amount || typeof body.amount != 'number' || body.amount <= 0) {
     return {
       isValid: false,
@@ -31,6 +39,4 @@ const validateTransactionRequest = (body: any): Record<string, any> => {
   };
 };
 
-export {
-    validateTransactionRequest
-}
+export { validateTransactionRequest };

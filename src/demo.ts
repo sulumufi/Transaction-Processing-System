@@ -1,42 +1,37 @@
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { Transaction } from './src/models/transactions';
 const API_BASE_URL = 'http://localhost:3000';
+import { ClientTransactionRequest } from './models/transactions';
 const NUM_TRANSACTIONS = 100;
-const DELAY_BETWEEN_REQUESTS = 100;
+const DELAY_BETWEEN_REQUESTS = 500;
 
-interface TransactionResponse {
+interface apiRequestPayload {
   transactionId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  submittedAt: string;
-  completedAt?: string;
-  error?: string;
+  amount: number;
+  currency: string;
+  description: string;
+  metadata?: Record<string, any>;
 }
 
-const generateTransaction = (): Transaction => {
+const generateTransaction = (): ClientTransactionRequest => {
   return {
-    id: uuidv4(),
+    transactionId: uuidv4(),
     amount: Math.round((Math.random() * 1000 + 10) * 100) / 100,
     currency: 'USD',
     description: `Test transaction ${Date.now()}`,
-    timestamp: new Date().toISOString(),
   };
 };
 
 const submitTransaction = async (
-  transaction: Transaction
+  payload: apiRequestPayload
 ): Promise<Record<string, any> | null> => {
   const startTime = Date.now();
 
   try {
-    const response = await axios.post(
-      `${API_BASE_URL}/transactions`,
-      transaction,
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 5000,
-      }
-    );
+    const response = await axios.post(`${API_BASE_URL}/transactions`, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 5000,
+    });
 
     const responseTime = Date.now() - startTime;
 
@@ -67,6 +62,7 @@ const runTest = async () => {
   const isHealthy = await checkHealthEndpoint();
   if (!isHealthy) {
     console.log('Not healthy, Returning...');
+    return;
   }
 
   console.log('Healty, Proceeding with next steps');
@@ -74,7 +70,8 @@ const runTest = async () => {
   const completedTransactions = [];
 
   for (let i = 0; i <= NUM_TRANSACTIONS; i++) {
-    const payload: Transaction = generateTransaction();
+    const payload: apiRequestPayload = generateTransaction();
+    console.log(JSON.stringify(payload));
     const response = await submitTransaction(payload);
     completedTransactions.push(response);
     await sleep(DELAY_BETWEEN_REQUESTS);
